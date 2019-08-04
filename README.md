@@ -209,7 +209,7 @@ self.addEventListener("fetch", evt => {
           })
           .catch(() => {
             //not working in my case
-            if (evt.request.url.indexof(".html") > -1)
+            if (evt.request.url.indexOf(".html") > -1)
               return caches.match("/pages/fallback.html");
           })
       );
@@ -234,5 +234,70 @@ const limitCatchSize = (name, size) => {
 limitCatchSize(dynamicCacheName, 15);
 ```
 
-## interacting with firebase fireStore
+## Interacting with firebase fireStore
 
+### realTime data tracking
+
+```javascript
+const db = firebase.firestore();
+const setting = { timestampInSnapshots: true };
+db.setting(setting);
+
+db.collection("recipes").onSnapshot(snapshot => {
+  snapshot.docChanges().forEach(change => {
+    console.log(change, change.doc.data(), change.doc.id);
+  });
+
+  if (change.type === "added") {
+  }
+  if (change.type === "removed") {
+  }
+});
+```
+
+### offline data caching using browser indexDB
+
+```javascript
+// enable offline data
+db.enablePersistence().catch(function(err) {
+  if (err.code == "failed-precondition") {
+    // probably multiple tabs open at once
+    console.log("persistance failed");
+  } else if (err.code == "unimplemented") {
+    // lack of browser support for the feature
+    console.log("persistance not available");
+  }
+});
+
+// check to not caching data
+// fetch event
+self.addEventListener("fetch", evt => {
+  //console.log('fetch event', evt);
+  if (evt.request.url.indexOf("firestore.googleapis.com") === -1) {
+    // do caching stuff
+  }
+});
+```
+
+## adding and deleting data
+
+```javascript
+const recipe = {
+  title: form.title.value,
+  ingredients: form.ingredients.value
+};
+db.collection("recipes")
+  .add(recipe)
+  .catch(err => console.log(err));
+
+formContainer.addEventListener("click", evt => {
+  if (evt.target.tagName === "I") {
+    // check whole form and check if I tag pressed
+    const id = evt.target.getAttribute("data-id"); // get an Attribute from target
+    db.collection("recipes")
+      .doc(id)
+      .delete()
+      .catch(err => console.log(err));
+  }
+});
+```
